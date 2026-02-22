@@ -1,7 +1,4 @@
-Flask
-opencv-python-headless
-numpy
-replicate
+flask
 requests
-python-dotenv
+replicate>=0.25.0
 gunicorn
