@@ -1,14 +1,14 @@
 import os
 import uuid
 import requests
-import replicate
 from flask import Flask, request, jsonify
+from replicate import Client
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -40,7 +40,6 @@ def restaurar():
         return jsonify({"error": "Falta REPLICATE_API_TOKEN"}), 500
 
     try:
-        # Generar nombres únicos
         ext = file.filename.rsplit(".", 1)[1].lower()
         unique_id = str(uuid.uuid4())
 
@@ -50,11 +49,12 @@ def restaurar():
         original_path = os.path.join(UPLOAD_FOLDER, original_filename)
         restored_path = os.path.join(UPLOAD_FOLDER, restored_filename)
 
-        # Guardar imagen original
         file.save(original_path)
 
-        # 🔥 Llamada moderna a Replicate (versión fija estable)
-        output = replicate.run(
+        # 🔥 Cliente moderno oficial
+        client = Client(api_token=os.environ["REPLICATE_API_TOKEN"])
+
+        output = client.run(
             "sczhou/codeformer:latest",
             input={
                 "image": open(original_path, "rb"),
@@ -65,7 +65,6 @@ def restaurar():
             },
         )
 
-        # El modelo devuelve una URL
         img_url = output
 
         response = requests.get(img_url)
@@ -73,11 +72,9 @@ def restaurar():
         if response.status_code != 200:
             return jsonify({"error": "Error descargando imagen IA"}), 500
 
-        # Guardar imagen restaurada
         with open(restored_path, "wb") as f:
             f.write(response.content)
 
-        # Crear URL pública
         public_url = request.host_url + "static/uploads/" + restored_filename
 
         return jsonify({"restored_url": public_url})
